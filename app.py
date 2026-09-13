@@ -1,4 +1,3 @@
-# 🛡️ Обязательно В САМОЙ ПЕРВОЙ СТРОКЕ для правильной асинхронности
 from gevent import monkey
 
 monkey.patch_all()
@@ -9,32 +8,23 @@ import uuid
 import secrets
 from datetime import datetime
 
-# Изменено: Используем send_from_directory для выдачи React
 from flask import Flask, send_from_directory, request, jsonify, session
 from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# 🛡️ БЕЗОПАСНОСТЬ: Pillow для перекодировки картинок
 from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = 20_000_000
 
-# 🛡️ БЕЗОПАСНОСТЬ: Защита от спама
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-# Импорты локальных модулей
 from database import init_db, get_db_connection
 from sockets_logic import init_sockets
 
-# Настраиваем Flask так, чтобы он раздавал статику из папки dist (собранный React)
 app = Flask(__name__, static_folder='dist', static_url_path='/')
 
-# ==========================================
-# 🛡️ НАСТРОЙКИ БЕЗОПАСНОСТИ СЕРВЕРА
-# ==========================================
-# Постоянный SECRET_KEY (сохраняет сессии при перезапуске сервера)
 SECRET_FILE = 'secret.key'
 if not os.path.exists(SECRET_FILE):
     with open(SECRET_FILE, 'w') as f:
@@ -42,13 +32,11 @@ if not os.path.exists(SECRET_FILE):
 with open(SECRET_FILE, 'r') as f:
     app.config['SECRET_KEY'] = f.read().strip()
 
-# Настройки Cookie (Временно выключил SECURE, чтобы работало на localhost без HTTPS)
 app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Запрет чтения куки из JS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Ограничение загрузки: 16 МБ
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Лимиты запросов
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -56,28 +44,21 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# Сокеты (Используем современный gevent)
 socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
-# ==========================================
-# 🛡️ ВАЛИДАЦИЯ ФАЙЛОВ
-# ==========================================
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 def process_and_save_image(file_stream, filepath):
-    """Полная перекодировка изображений через Pillow (уничтожает Polyglot/XSS)"""
+
     try:
         img = Image.open(file_stream)
         img.verify()
         file_stream.seek(0)
         img = Image.open(file_stream)
 
-        # Фикс прозрачности для PNG->JPG
         if img.mode in ("RGBA", "P") and filepath.lower().endswith(('.jpg', '.jpeg')):
             img = img.convert("RGB")
 
@@ -90,8 +71,6 @@ def process_and_save_image(file_stream, filepath):
         print(f"[Безопасность] Заблокирован битый файл: {e}")
         return False
 
-
-# Создание папок
 for folder in ['static/avatars', 'static/media', 'static/images', 'static/stickers', 'static/emojis',
                'static/reactions']:
     os.makedirs(folder, exist_ok=True)
@@ -101,52 +80,37 @@ app.config['MEDIA_FOLDER'] = 'static/media'
 init_db()
 init_sockets(socketio)
 
-
-# --- ХЕЛПЕРЫ ДЛЯ ПРОВЕРКИ ДОСТУПА ---
 def is_member(username, room_id):
     with get_db_connection() as conn:
         return bool(
             conn.execute('SELECT 1 FROM room_members WHERE room_id=? AND username=?', (room_id, username)).fetchone())
 
-
 def is_owner(username, room_id):
     with get_db_connection() as conn:
         return bool(conn.execute('SELECT 1 FROM rooms WHERE id=? AND owner=?', (room_id, username)).fetchone())
 
-
-# ==========================================
-# СТАТИКА И SPA ROUTING (REACT)
-# ==========================================
 @app.route('/')
 def index():
-    # Отдаем index.html из папки dist (билд React'a)
-    return send_from_directory(app.static_folder, 'index.html')
 
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/<path:path>')
 def serve_react_app(path):
-    # Если запрашивается файл из dist (например JS, CSS), отдаем его
+
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     else:
-        # Для React Router'a при обновлении страницы
+
         return send_from_directory(app.static_folder, 'index.html')
 
-
-# Возвращаем файлы из папки static/ (аватарки, фото и т.д.)
 @app.route('/static/<path:filename>')
 def serve_static_files(filename):
     return send_from_directory('static', filename)
-
 
 @app.route('/api/static/<path:filename>')
 def serve_api_static(filename):
     return send_from_directory('static', filename)
 
-
-# ==========================================
-# АВТОРИЗАЦИЯ И СЕССИИ
-# ==========================================
 @app.route('/api/register', methods=['POST'])
 @limiter.limit("5 per minute")
 def register():
@@ -168,7 +132,6 @@ def register():
         conn.commit()
     return jsonify({'success': True})
 
-
 @app.route('/api/login', methods=['POST'])
 @limiter.limit("10 per minute")
 def login():
@@ -184,10 +147,8 @@ def login():
             session.clear()
             session['username'] = user['username']
 
-            # Always return the encrypted private key from the DB
             returned_epk = dict(user).get('encrypted_private_key')
 
-            # If the user somehow submitted a new public_key during login (e.g. migrating or reset)
             if encrypted_private_key:
                 if public_key and public_key != "no_crypto":
                     conn.execute('UPDATE users SET public_key = ?, encrypted_private_key = ? WHERE username = ?',
@@ -203,12 +164,10 @@ def login():
 
         return jsonify({'error': 'Неверный логин или пароль'}), 401
 
-
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.pop('username', None)
     return jsonify({'success': True})
-
 
 @app.route('/api/get_user/<username>', methods=['GET'])
 def get_user(username):
@@ -218,10 +177,6 @@ def get_user(username):
         return jsonify({'success': True, 'username': user['username'], 'avatar': user['avatar']}) if user else (
             jsonify({'error': 'Не найден'}), 404)
 
-
-# ==========================================
-# ОСТАЛЬНЫЕ МЕТОДЫ ОСТАЛИСЬ КАК БЫЛИ
-# ==========================================
 @app.route('/api/rooms/<username>', methods=['GET'])
 def get_rooms(username):
     if session.get('username') != username: return jsonify({'error': 'Доступ запрещен'}), 403
@@ -232,12 +187,11 @@ def get_rooms(username):
                 (SELECT text FROM messages WHERE room_id = r.id ORDER BY rowid DESC LIMIT 1) as last_text,
                 (SELECT encrypted_keys FROM messages WHERE room_id = r.id ORDER BY rowid DESC LIMIT 1) as last_keys,
                 (SELECT media FROM messages WHERE room_id = r.id ORDER BY rowid DESC LIMIT 1) as last_media
-            FROM rooms r 
-            JOIN room_members rm ON r.id = rm.room_id 
+            FROM rooms r
+            JOIN room_members rm ON r.id = rm.room_id
             WHERE rm.username = ?
         ''', (username,)).fetchall()
         return jsonify([dict(r) for r in rooms])
-
 
 @app.route('/api/room_keys/<room_id>', methods=['GET'])
 def get_room_keys(room_id):
@@ -249,7 +203,6 @@ def get_room_keys(room_id):
             (room_id,)).fetchall()
         return jsonify({u['username']: u['public_key'] for u in users})
 
-
 @app.route('/api/room_members/<room_id>', methods=['GET'])
 def get_room_members(room_id):
     username = session.get('username')
@@ -259,7 +212,6 @@ def get_room_members(room_id):
             'SELECT u.username, u.avatar FROM room_members rm JOIN users u ON rm.username = u.username WHERE rm.room_id = ?',
             (room_id,)).fetchall()
         return jsonify([dict(m) for m in members])
-
 
 @app.route('/api/create_room', methods=['POST'])
 @limiter.limit("10 per minute")
@@ -274,7 +226,6 @@ def create_room():
         conn.execute('INSERT INTO room_members (room_id, username) VALUES (?, ?)', (room_id, username))
         conn.commit()
     return jsonify({'success': True, 'room': {'id': room_id, 'name': data.get('name'), 'owner': username}})
-
 
 @app.route('/api/invite', methods=['POST'])
 def invite_user():
@@ -296,7 +247,6 @@ def invite_user():
         except sqlite3.IntegrityError:
             return jsonify({'error': 'Уже в чате'}), 400
 
-
 @app.route('/api/leave_room', methods=['POST'])
 def leave_chat_room():
     username = session.get('username')
@@ -306,7 +256,6 @@ def leave_chat_room():
                      (request.get_json().get('room_id'), username))
         conn.commit()
     return jsonify({'success': True})
-
 
 @app.route('/api/delete_room', methods=['POST'])
 def delete_chat_room():
@@ -320,7 +269,6 @@ def delete_chat_room():
         conn.execute('DELETE FROM messages WHERE room_id = ?', (room_id,))
         conn.commit()
     return jsonify({'success': True})
-
 
 @app.route('/api/set_stream', methods=['POST'])
 def set_stream():
@@ -338,7 +286,6 @@ def set_stream():
         conn.commit()
     socketio.emit('stream updated', {'room_id': room_id, 'stream_url': stream_url}, to=room_id)
     return jsonify({'success': True})
-
 
 @app.route('/api/history/<room_id>', methods=['GET'])
 def get_history(room_id):
@@ -374,7 +321,6 @@ def get_history(room_id):
             history.append(msg_obj)
         return jsonify(history)
 
-
 @app.route('/api/upload_avatar', methods=['POST'])
 @limiter.limit("10 per minute")
 def upload_avatar():
@@ -391,7 +337,6 @@ def upload_avatar():
             return jsonify({'success': True, 'avatar': url})
     return jsonify({'error': 'Неверный формат или битый файл'}), 400
 
-
 @app.route('/api/upload_media', methods=['POST'])
 @limiter.limit("20 per minute")
 def upload_media():
@@ -405,7 +350,6 @@ def upload_media():
             return jsonify({'success': True, 'media_url': f"/{filepath}".replace("\\", "/")})
     return jsonify({'error': 'Неверный формат файла'}), 400
 
-
 @app.route('/api/assets/<asset_type>/<username>', methods=['GET'])
 def get_assets(asset_type, username):
     if not session.get('username'): return jsonify({'error': 'Не авторизован'}), 401
@@ -413,7 +357,6 @@ def get_assets(asset_type, username):
     with get_db_connection() as conn:
         assets = conn.execute('SELECT url FROM assets WHERE type = ? AND owner = ?', (asset_type, username)).fetchall()
         return jsonify([a['url'] for a in assets])
-
 
 @app.route('/api/upload_asset', methods=['POST'])
 @limiter.limit("30 per minute")
@@ -435,7 +378,6 @@ def upload_asset():
             socketio.emit('asset_added', {'type': asset_type, 'url': url})
             return jsonify({'success': True, 'url': url})
     return jsonify({'error': 'Ошибка загрузки (неверный формат)'}), 400
-
 
 if __name__ == '__main__':
     print("=====================================================")

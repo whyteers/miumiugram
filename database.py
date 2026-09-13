@@ -2,7 +2,6 @@ import sqlite3
 
 DB_FILE = 'users.db'
 
-
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
@@ -19,7 +18,6 @@ def init_db():
         cursor.execute(
             '''CREATE TABLE IF NOT EXISTS room_members (room_id TEXT, username TEXT, UNIQUE(room_id, username))''')
 
-        # ИЗМЕНЕНО: text теперь зашифрованный. Добавлено поле encrypted_keys (JSON словарь)
         cursor.execute(
             '''CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, room_id TEXT, username TEXT, text TEXT, encrypted_keys TEXT, media TEXT, time TEXT, reply_to_id TEXT, is_edited INTEGER DEFAULT 0)''')
 
@@ -29,7 +27,6 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS api_bots (username TEXT PRIMARY KEY, api_key TEXT, owner TEXT)''')
 
         conn.commit()
-
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)

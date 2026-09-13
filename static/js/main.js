@@ -9,14 +9,12 @@ let typingTimeout, currentlyTyping = new Set(), replyingToId = null, editingMsgI
 let selectedMediaBase64 = null;
 const isCryptoAvailable = !!(window.crypto && window.crypto.subtle);
 
-// ЗВОНКИ
 let inVoiceChat = false;
 let localAudioStream = null;
 let peerConnections = {};
-let voiceUsersInRoom = new Set(); // Храним тех, кто сейчас в звонке
+let voiceUsersInRoom = new Set();
 const WEBRTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-// Перехватчик Fetch для CSRF
 const originalFetch = window.fetch;
 window.fetch = async function() {
     let [resource, config] = arguments;
@@ -39,7 +37,6 @@ function openSettings() { document.getElementById('set-opacity').value = localSt
 function previewSettings() { const root = document.querySelector(':root'); root.style.setProperty('--wallpaper-opacity', document.getElementById('set-opacity').value); root.style.setProperty('--bg-blur', document.getElementById('set-blur').value + 'px'); root.style.setProperty('--font-scale', document.getElementById('set-scale').value); root.style.setProperty('--msg-mine-bg', document.getElementById('set-color').value); }
 function saveSettings() { localStorage.setItem('wall_op', document.getElementById('set-opacity').value); localStorage.setItem('blur', document.getElementById('set-blur').value); localStorage.setItem('scale', document.getElementById('set-scale').value); localStorage.setItem('mine_color', document.getElementById('set-color').value); document.getElementById('settings-modal').style.display = 'none'; }
 
-// УПРАВЛЕНИЕ МЕНЮ И СТРИМОМ
 function toggleDropdown(e) {
     e.stopPropagation();
     document.getElementById("chat-menu").classList.toggle("show");
@@ -66,7 +63,6 @@ function updateStreamUI(url) {
     }
 }
 
-// ПРЕДПРОСМОТР КАРТИНОК И СТИКЕРЫ
 function previewMedia() {
     const file = document.getElementById('media-input').files[0]; if (!file) return;
     const reader = new FileReader();
@@ -122,7 +118,6 @@ function insertEmoji(text) { const ci = document.getElementById('chat-text'); ci
 function insertEmojiHtml(src) { const ci = document.getElementById('chat-text'); ci.focus(); document.execCommand('insertImage', false, src); }
 function sendSticker(src) { sendEncryptedPayload('', src); document.getElementById('stickers-panel').style.display = 'none'; }
 
-// АВТОРИЗАЦИЯ
 window.onload = async function() {
     const savedUser = localStorage.getItem('savedUsername');
     if (savedUser) {
@@ -145,7 +140,7 @@ async function auth(endpoint) {
 
     if (endpoint === 'register') { errorDiv.innerText = "Генерация ключей..."; errorDiv.style.display = "block"; payload.public_key = await CryptoE2E.generateKeyPair(); }
      if (isCryptoAvailable && typeof CryptoE2E !== 'undefined') {
-        const hasKey = await KeyDB.getKey(); // Проверяем, есть ли уже ключ на этом устройстве
+        const hasKey = await KeyDB.getKey();
         if (endpoint === 'register' || !hasKey) {
             errorDiv.innerText = "Генерация ключей шифрования..."; errorDiv.style.display = "block";
             payload.public_key = await CryptoE2E.generateKeyPair();
@@ -166,13 +161,12 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 
 async function uploadAvatar() { const file = document.getElementById('avatar-input').files[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); formData.append('username', currentUser); const res = await fetch('/api/upload_avatar', { method: 'POST', body: formData }); if (res.ok) document.getElementById('my-avatar').src = (await res.json()).avatar; }
 
-// КОМНАТЫ И СТРИМ
 async function loadRooms(forceRoomId = null) {
     const res = await fetch(`/api/rooms/${currentUser}`); myRooms = await res.json();
     const list = document.getElementById('rooms-list'); list.innerHTML = '';
 
     for (const room of myRooms) {
-        // Дешифровка последнего сообщения для списка чатов
+
         let lastMsgTxt = "Нет сообщений";
         if (room.last_media) lastMsgTxt = "📷 Фотография";
         else if (room.last_text) {
@@ -230,10 +224,6 @@ async function switchRoom(roomId, roomName, streamUrl) {
     const mRes = await fetch(`/api/room_members/${roomId}`); if(mRes.ok) { currentRoomMembers = await mRes.json(); renderMembers(); }
 }
 
-
-// ==========================================
-// 🎙️ ГОЛОСОВЫЕ ЗВОНКИ И UI АВАТАРОВ
-// ==========================================
 function updateVoiceParticipantsUI() {
     const panel = document.getElementById('voice-participants-panel');
     const container = document.getElementById('voice-avatars');
@@ -243,7 +233,7 @@ function updateVoiceParticipantsUI() {
         panel.style.display = 'none';
     } else {
         panel.style.display = 'flex';
-        // Берем аватарки из списка участников комнаты
+
         voiceUsersInRoom.forEach(uname => {
             const member = currentRoomMembers.find(m => m.username === uname);
             if (member) {
@@ -298,10 +288,6 @@ function createPeerConnection(peerUsername) {
     return pc;
 }
 
-
-// ==========================================
-// УПОМИНАНИЯ, РЕДАКТИРОВАНИЕ, УДАЛЕНИЕ
-// ==========================================
 function insertMention(username) { const ci = document.getElementById('chat-text'); ci.focus(); document.execCommand('insertText', false, `@${username} `); }
 function parseMentions(text) { return text.replace(/@([a-zA-Z0-9_А-Яа-я]+)/g, '<span class="mention">@$1</span>'); }
 
@@ -338,9 +324,6 @@ function toggleReactionPicker(msgId) {
 }
 function sendReaction(msgId, emoji) { socket.emit('chat reaction', { msg_id: msgId, room_id: currentRoomId, reaction: emoji, username: currentUser }); document.getElementById(`picker-${msgId}`).style.display = 'none'; document.getElementById(`msg-${msgId}`).classList.remove('picker-open'); }
 
-// ==========================================
-// РЕНДЕР СООБЩЕНИЙ С E2EE ДЕШИФРОВКОЙ
-// ==========================================
 async function renderMessage(msg, isHistory = false) {
     if (!isHistory && msg.room_id !== currentRoomId) return;
     const isMine = msg.username === currentUser;
@@ -429,9 +412,6 @@ function onInputTyping() {
 function updateTypingUI() { const ti = document.getElementById('typing-indicator'); if (currentlyTyping.size === 0) ti.style.display = 'none'; else { ti.innerText = `${Array.from(currentlyTyping).join(', ')} печатает...`; ti.style.display = 'block'; } }
 document.getElementById('chat-text').addEventListener('input', onInputTyping);
 
-// ==========================================
-// ИНИЦИАЛИЗАЦИЯ СОКЕТОВ
-// ==========================================
 async function startApp() {
     document.getElementById('auth-screen').style.display = 'none'; document.getElementById('main-app').style.display = 'flex';
     if (!socket) {
@@ -450,7 +430,7 @@ async function startApp() {
         socket.on('chat message', async (msg) => {
             await renderMessage(msg);
             currentlyTyping.delete(msg.username); updateTypingUI();
-            loadRooms(); // Обновляем левое меню (чтобы обновилось "последнее сообщение")
+            loadRooms();
         });
 
         socket.on('stream updated', (d) => { if (d.room_id === currentRoomId) updateStreamUI(d.stream_url); });
@@ -481,7 +461,6 @@ async function startApp() {
             }
         });
 
-        // WEBRTC ЗВОНКИ
         socket.on('user_joined_voice', async (data) => {
             if (!inVoiceChat || data.room_id !== currentRoomId) return;
             const peerUsername = data.username;

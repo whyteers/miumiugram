@@ -6,24 +6,19 @@ from database import get_db_connection
 
 online_users = {}
 
-
-# Хелпер для сокетов
 def is_member(username, room_id):
     with get_db_connection() as conn:
         return bool(
             conn.execute('SELECT 1 FROM room_members WHERE room_id=? AND username=?', (room_id, username)).fetchone())
 
-
 def init_sockets(socketio):
-    # ==========================================
-    # 🎙️ WEBRTC ГОЛОСОВЫЕ ЗВОНКИ
-    # ==========================================
+
     @socketio.on('join_voice')
     def handle_join_voice(data):
         username = session.get('username')
         room_id = data.get('room_id')
         if username and is_member(username, room_id):
-            # Сообщаем всем в комнате, что юзер зашел в голос
+
             emit('user_joined_voice', {'username': username, 'room_id': room_id}, to=room_id, include_self=False)
 
     @socketio.on('leave_voice')
@@ -31,27 +26,26 @@ def init_sockets(socketio):
         username = session.get('username')
         room_id = data.get('room_id')
         if username:
-            # Сообщаем всем, что юзер вышел из голоса
+
             emit('user_left_voice', {'username': username, 'room_id': room_id}, to=room_id, include_self=False)
 
     @socketio.on('webrtc_signal')
     def handle_webrtc_signal(data):
         username = session.get('username')
-        target = data.get('target')  # Кому адресован пакет
+        target = data.get('target')
         if username and target:
-            # Пересылаем P2P-сигнал строго в личный канал адресата
+
             emit('webrtc_signal', {
                 'from': username,
                 'signal': data.get('signal'),
                 'room_id': data.get('room_id')
             }, to=f"user_{target}")
 
-
     @socketio.on('user_online')
-    def handle_user_online(*args):  # *args позволяет принимать вызовы без данных
+    def handle_user_online(*args):
         username = session.get('username')
         if username:
-            # 🛡️ Пользователь подписывается на ЛИЧНЫЙ канал уведомлений
+
             join_room(f"user_{username}")
             online_users[username] = online_users.get(username, 0) + 1
             emit('user_status', {'username': username, 'status': 'online'}, broadcast=True)
@@ -70,7 +64,7 @@ def init_sockets(socketio):
     def handle_typing(data):
         username = session.get('username')
         room_id = data.get('room_id')
-        # 🛡️ БЕЗОПАСНОСТЬ: Только участник чата может посылать статус "Печатает..."
+
         if username and is_member(username, room_id):
             data['username'] = username
             emit('typing', data, to=room_id)
@@ -79,24 +73,22 @@ def init_sockets(socketio):
     def on_join(data):
         username = session.get('username')
         room_id = data.get('room_id')
-        # 🛡️ БЕЗОПАСНОСТЬ: Не даем подключиться к прослушиванию чужого чата
+
         if username and is_member(username, room_id):
             join_room(room_id)
 
     @socketio.on('chat message')
     def handle_message(data):
-        # 1. Проверка авторизации через сессию (защита от подделки имени)
+
         username = session.get('username')
         room_id = data.get('room_id')
 
         if not username or not is_member(username, room_id):
             return
 
-        # 2. Получение данных из сообщения
-        # Ожидаем, что фронтенд прислал медиа-URL (если файл загружен) и ключи шифрования
         encrypted_text = data.get('text', '')
-        encrypted_keys = data.get('encrypted_keys', '{}')  # JSON строка с ключами для всех участников
-        media_url = data.get('media', '')  # Сюда должен попасть URL после загрузки через /api/upload_media
+        encrypted_keys = data.get('encrypted_keys', '{}')
+        media_url = data.get('media', '')
         reply_to_id = data.get('reply_to_id')
 
         msg_id = str(uuid.uuid4())
@@ -105,49 +97,41 @@ def init_sockets(socketio):
         reply_info = None
 
         with get_db_connection() as conn:
-            # 3. ОБРАБОТКА РЕПЛАЯ (Решение проблемы №3)
-            # Нам нужно достать зашифрованные ключи ОРИГИНАЛЬНОГО сообщения,
-            # чтобы получатель мог расшифровать цитату.
+
             if reply_to_id:
                 r_msg = conn.execute('''
-                    SELECT username, text, encrypted_keys, media, room_id 
+                    SELECT username, text, encrypted_keys, media, room_id
                     FROM messages WHERE id = ?
                 ''', (reply_to_id,)).fetchone()
 
-                # Проверяем, что сообщение из этой же комнаты
                 if r_msg and r_msg['room_id'] == room_id:
                     reply_info = {
                         'id': reply_to_id,
                         'username': r_msg['username'],
                         'text': r_msg['text'],
-                        'encrypted_keys': r_msg['encrypted_keys'],  # ОБЯЗАТЕЛЬНО для расшифровки на клиенте
+                        'encrypted_keys': r_msg['encrypted_keys'],
                         'media': r_msg['media']
                     }
 
-            # 4. Получаем аватар автора (чтобы он был актуальным)
             user = conn.execute('SELECT avatar FROM users WHERE username = ?', (username,)).fetchone()
             avatar = user['avatar'] if user else ''
 
-            # 5. СОХРАНЕНИЕ В БД (Решение проблемы №1 и №2)
-            # Убеждаемся, что медиа и ключи сохраняются
             conn.execute('''
                 INSERT INTO messages (id, room_id, username, text, encrypted_keys, media, time, reply_to_id, is_edited)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
             ''', (msg_id, room_id, username, encrypted_text, encrypted_keys, media_url, time_str, reply_to_id))
             conn.commit()
 
-        # 6. РАССЫЛКА (Broadcasting)
-        # Отправляем полный пакет данных всем в комнате
         emit('chat message', {
             'id': msg_id,
             'room_id': room_id,
             'username': username,
             'text': encrypted_text,
-            'encrypted_keys': encrypted_keys,  # Ключи для текущего сообщения
+            'encrypted_keys': encrypted_keys,
             'media': media_url,
             'time': time_str,
             'avatar': avatar,
-            'reply_to': reply_info,  # Информация о реплае + ключи для его расшифровки
+            'reply_to': reply_info,
             'is_edited': 0
         }, to=room_id)
 
@@ -159,7 +143,7 @@ def init_sockets(socketio):
         msg_id, room_id = data['msg_id'], data['room_id']
         with get_db_connection() as conn:
             msg = conn.execute('SELECT username FROM messages WHERE id = ?', (msg_id,)).fetchone()
-            # 🛡️ БЕЗОПАСНОСТЬ: Только владелец сообщения может его изменить
+
             if msg and msg['username'] == username:
                 conn.execute('UPDATE messages SET text = ?, encrypted_keys = ?, is_edited = 1 WHERE id = ?',
                              (data['text'], data['encrypted_keys'], msg_id))
@@ -175,7 +159,7 @@ def init_sockets(socketio):
         msg_id, room_id = data['msg_id'], data['room_id']
         with get_db_connection() as conn:
             msg = conn.execute('SELECT username FROM messages WHERE id = ?', (msg_id,)).fetchone()
-            # 🛡️ БЕЗОПАСНОСТЬ: Только владелец сообщения может его удалить
+
             if msg and msg['username'] == username:
                 conn.execute('DELETE FROM messages WHERE id = ?', (msg_id,))
                 conn.execute('DELETE FROM reactions WHERE msg_id = ?', (msg_id,))
@@ -187,7 +171,6 @@ def init_sockets(socketio):
         username = session.get('username')
         room_id = data.get('room_id')
 
-        # 🛡️ БЕЗОПАСНОСТЬ: Ставить реакции могут только участники комнаты
         if not username or not is_member(username, room_id): return
 
         msg_id, reaction = data['msg_id'], data['reaction']
@@ -209,7 +192,6 @@ def init_sockets(socketio):
             current_reactions[r['reaction']].append(r['username'])
         emit('update reactions', {'msg_id': msg_id, 'reactions': current_reactions}, to=room_id)
 
-    # 🛡️ БОТ АВТОРИЗАЦИЯ
     @socketio.on('bot_auth')
     def handle_bot_auth(data):
         api_key = data.get('api_key')

@@ -6,10 +6,9 @@ export const useSocketInit = () => {
     const { currentUser, setSocket, setOnlineUsers } = useChatStore();
 
     useEffect(() => {
-        // Если юзер не авторизован - сокеты не подключаем
+
         if (!currentUser) return;
 
-        // Подключаемся к серверу (через Vite прокси)
         const newSocket = io();
 
         newSocket.on('connect', () => {
@@ -17,7 +16,6 @@ export const useSocketInit = () => {
             newSocket.emit('user_online');
         });
 
-        // Слушаем, кто сейчас онлайн
         newSocket.on('sync_online_users', (usersList: string[]) => {
             setOnlineUsers(usersList);
         });
@@ -68,10 +66,8 @@ export const useSocketInit = () => {
             }
         });
 
-        // Сохраняем сокет в глобальное хранилище
         setSocket(newSocket);
 
-        // Функция очистки (вызовется, когда мы нажмем "Выйти")
         return () => {
             newSocket.disconnect();
             setSocket(null);

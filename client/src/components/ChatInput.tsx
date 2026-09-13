@@ -53,14 +53,12 @@ export default function ChatInput() {
     const handleSend = async () => {
         let domText = inputRef.current?.innerHTML || '';
 
-        // Strip out any tags except img
-        // First convert breaks to newlines
         domText = domText.replace(/<div[^>]*>/gi, '\n');
         domText = domText.replace(/<p[^>]*>/gi, '\n');
         domText = domText.replace(/<br\s*\/?>/gi, '\n');
-        // Remove closing div/p
+
         domText = domText.replace(/<\/div>|<\/p>/gi, '');
-        // Strip all remaining tags except img
+
         domText = domText.replace(/<(?!img\s|\/?img>)[^>]+>/gi, '');
 
         const currentText = domText.trim() ? domText.trim() : text.trim();

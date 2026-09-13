@@ -1,7 +1,3 @@
-/**
- * Модуль End-to-End шифрования. Безопасное хранение в IndexedDB.
- */
-
 export const KeyDB = {
     async open() {
         return new Promise<IDBDatabase>((resolve, reject) => {
@@ -56,7 +52,6 @@ export const CryptoE2E = {
         const exportedPublicKey = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
         const exportedPrivateKey = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
-        // 🛡️ Сохраняем Приватный ключ в IndexedDB, а не в LocalStorage
         await KeyDB.saveKey(Array.from(new Uint8Array(exportedPrivateKey)));
 
         let encryptedPrivateKey = null;
@@ -126,7 +121,6 @@ export const CryptoE2E = {
             privateKeyBuffer
         );
 
-        // Package salt + iv + encrypted data into one base64 string
         const payload = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
         payload.set(salt, 0);
         payload.set(iv, salt.length);

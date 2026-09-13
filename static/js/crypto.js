@@ -1,8 +1,3 @@
-/**
- * Модуль End-to-End шифрования. Безопасное хранение в IndexedDB.
- */
-
-// Оболочка над IndexedDB для хранения ключей
 const KeyDB = {
     async open() {
         return new Promise((resolve, reject) => {
@@ -40,7 +35,6 @@ const CryptoE2E = {
         const exportedPublicKey = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
         const exportedPrivateKey = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
-        // 🛡️ Сохраняем Приватный ключ в IndexedDB, а не в LocalStorage
         await KeyDB.saveKey(Array.from(new Uint8Array(exportedPrivateKey)));
         return this.toBase64(exportedPublicKey);
     },

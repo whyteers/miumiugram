@@ -44,7 +44,7 @@ export function DecryptedReply({ reply, currentUser }: { reply: any, currentUser
 
     const isMedia = !!decMsg.media;
     let txt = decMsg.text || '';
-    txt = txt.replace(/<img[^>]*src="([^"]+)"[^>]*>/g, ' $1 '); // text preview of emoji urls
+    txt = txt.replace(/<img[^>]*src="([^"]+)"[^>]*>/g, ' $1 ');
     txt = txt.replace(/<[^>]*>?/gm, ' ');
     if (isMedia) txt = "📷 Медиа " + txt;
 
@@ -93,7 +93,6 @@ export function MessageContent({ m, currentUser }: { m: any, currentUser: string
         cleanText = cleanText.replace(/<(?!img\s|\/?img>)[^>]+>/gi, '');
     }
 
-    // Decode HTML entities if it's rendered as plain text to avoid showing &lt; literally
     const renderText = !hasHtml && cleanText
         ? cleanText.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '\n')
         : cleanText;
@@ -135,7 +134,6 @@ export default function ChatArea() {
     const [reactingToMsgId, setReactingToMsgId] = useState<string | null>(null);
     const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
 
-    // Close reactions popup on click anywhere
     useEffect(() => {
         const handleClick = () => {
             setReactingToMsgId(null);
@@ -206,7 +204,6 @@ export default function ChatArea() {
         };
     }, [isDragging]);
 
-    // Загрузка
     useEffect(() => {
         if (!currentRoomId) return;
 
@@ -236,12 +233,10 @@ export default function ChatArea() {
         loadHistoryAndMembers();
     }, [currentRoomId, setMessages, setRoomMembers]);
 
-    // Прокрутка
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Сокеты
     useEffect(() => {
         if (!socket) return;
 
@@ -613,7 +608,6 @@ export default function ChatArea() {
                             {renderMembers()}
                         </div>
 
-                        {/* Voice Chat Panel */}
                         <div className="border-t border-white/5 p-4 flex flex-col gap-3">
                             <div className="flex items-center justify-between text-white/70 text-sm font-semibold uppercase tracking-wider">
                                 <div className="flex items-center gap-2">

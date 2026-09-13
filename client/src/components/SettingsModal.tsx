@@ -47,7 +47,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
                 <div className="flex-1 flex flex-col items-center overflow-y-auto custom-scrollbar p-8">
                     <div className="w-full max-w-2xl flex flex-col gap-8">
-                        {/* Interface Scale */}
+
                     <div className="flex flex-col gap-2">
                         <label className="text-white/70 text-sm font-medium flex justify-between">
                             Interface Scale
@@ -65,7 +65,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         />
                     </div>
 
-                    {/* Blur Degree */}
                     <div className="flex flex-col gap-3">
                         <label className="text-white/70 text-sm font-medium flex justify-between">
                             Background Blur (px)
@@ -83,7 +82,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         />
                     </div>
 
-                    {/* Wallpaper URL */}
                     <div className="flex flex-col gap-3">
                         <label className="text-white/70 text-sm font-medium">Wallpaper URL or File</label>
                         <div className="flex gap-2">
@@ -102,7 +100,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         </div>
                     </div>
 
-                    {/* Wallpaper Opacity */}
                     <div className="flex flex-col gap-3">
                         <label className="text-white/70 text-sm font-medium flex justify-between">
                             Wallpaper Opacity
@@ -120,7 +117,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         />
                     </div>
 
-                    {/* Message Colors */}
                     <div className="flex flex-col gap-4 pt-4 border-t border-white/5">
                         <label className="text-white/70 text-sm font-medium">Message Bubbles Colors</label>
 

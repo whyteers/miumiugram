@@ -13,7 +13,7 @@ export function useVoiceChat() {
 
     const createPeer = useCallback((targetUser: string, initiator: boolean, stream: MediaStream) => {
         if (!socket || !currentRoomId) return null;
-        
+
         const peer = new RTCPeerConnection({
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -45,7 +45,7 @@ export function useVoiceChat() {
                 audioElementsRef.current[targetUser].srcObject = event.streams[0];
             }
         };
-        
+
         peer.onconnectionstatechange = () => {
             if (peer.connectionState === 'disconnected' || peer.connectionState === 'failed') {
                 cleanupPeer(targetUser);
@@ -100,8 +100,7 @@ export function useVoiceChat() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             localStreamRef.current = stream;
-            
-            // Mute logic
+
             if (isMuted) {
                 stream.getAudioTracks().forEach(t => t.enabled = false);
             }
@@ -137,7 +136,7 @@ export function useVoiceChat() {
         const handleUserJoined = (data: { username: string, room_id: string }) => {
             if (data.room_id !== currentRoomId || data.username === currentUser) return;
             setVoiceMembers(prev => new Set(prev).add(data.username));
-            // User joined, we are already in voice. We initiate call to them.
+
             if (localStreamRef.current && isInVoice) {
                 createPeer(data.username, true, localStreamRef.current);
             }
@@ -153,7 +152,6 @@ export function useVoiceChat() {
             const targetUser = data.from;
             const signal = data.signal;
 
-            // We must be in voice to process incoming signals
             if (!localStreamRef.current) return;
 
             setVoiceMembers(prev => new Set(prev).add(targetUser));
@@ -192,14 +190,13 @@ export function useVoiceChat() {
         };
     }, [socket, currentRoomId, currentUser, isInVoice, createPeer]);
 
-    // Cleanup on room change or unmount
     useEffect(() => {
         return () => {
             if (isInVoice) {
                 leaveVoice();
             }
         };
-    }, [currentRoomId]); // Note: intentional run on currentRoomId change to leave previous room's voice call
+    }, [currentRoomId]);
 
     return { joinVoice, leaveVoice, isInVoice, voiceMembers, isMuted, toggleMute };
 }

@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Приватные чаты</title>
 
-    <!-- Основные стили -->
     <link rel="stylesheet" href="/static/css/style.css?v=4">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Приватные чаты</title>
 
-    <!-- Основные стили -->
     <link rel="stylesheet" href="/static/css/style.css?v=4">
 
-    <!-- Библиотеки для Markdown и математических формул -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -22,9 +19,6 @@
 </head>
 <body>
 
-    <!-- =========================================
-         МОДАЛЬНОЕ ОКНО НАСТРОЕК
-    ========================================= -->
     <div id="settings-modal" class="settings-modal">
         <div class="settings-content">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
@@ -51,14 +45,6 @@
         </div>
     </div>
 
-    <!-- =========================================
-         МОДАЛЬНОЕ ОКНО БОТОВ
-    ========================================= -->
-
-
-    <!-- =========================================
-         ЭКРАН АВТОРИЗАЦИИ
-    ========================================= -->
     <div id="auth-screen">
         <div class="auth-box">
             <h2>Вход в систему</h2>
@@ -71,14 +57,10 @@
         </div>
     </div>
 
-    <!-- =========================================
-         ОСНОВНОЙ ИНТЕРФЕЙС ЧАТА
-    ========================================= -->
     <div id="main-app">
-        <!-- Кнопка скрытия левой панели -->
+
         <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="Скрыть/Показать меню">☰</button>
 
-        <!-- ЛЕВАЯ ПАНЕЛЬ (Список комнат и профиль) -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 Мои чаты
@@ -86,7 +68,7 @@
             </div>
 
             <div class="rooms-list" id="rooms-list">
-                <!-- Список комнат загружается через JS -->
+
             </div>
 
             <div class="profile-panel">
@@ -103,19 +85,16 @@
             </div>
         </div>
 
-        <!-- ПРАВАЯ ПАНЕЛЬ (Чат и Трансляция) -->
         <div class="main-area">
 
-            <!-- Заглушка (пока не выбран чат) -->
             <div id="placeholder-screen">
                 <div class="overlay"></div>
                 <p>Выберите чат слева или создайте новый</p>
             </div>
 
-            <!-- Интерфейс активного чата -->
             <div id="chat-interface">
                 <div class="stream-panel" id="stream-panel">
-                    <!-- Крестик для локального закрытия стрима зрителями -->
+
                     <button class="local-close-stream" onclick="closeLocalStream()" title="Скрыть трансляцию">✕</button>
                     <iframe id="stream-iframe" allowfullscreen></iframe>
                 </div>
@@ -129,7 +108,6 @@
                             <button class="icon-btn" id="btn-voice" onclick="toggleVoice()" title="Голосовой звонок">📞</button>
                             <button class="icon-btn" onclick="inviteUser()" title="Добавить людей">➕</button>
 
-                            <!-- Выпадающее меню (Три точки) -->
                             <div class="dropdown">
                                 <button class="icon-btn" onclick="toggleDropdown(event)" title="Меню">⋮</button>
                                 <div id="chat-menu" class="dropdown-content">
@@ -141,26 +119,20 @@
                         </div>
                     </div>
 
-                    <!-- ПАНЕЛЬ ГОЛОСОВОГО ЗВОНКА (Появляется при звонке) -->
                     <div class="voice-participants" id="voice-participants-panel">
                         <span>В звонке:</span>
                         <div id="voice-avatars" style="display: flex; gap: 8px;"></div>
                     </div>
 
-
-                    <!-- Контейнер для сообщений и участников -->
                     <div class="chat-body-wrapper">
 
-                        <!-- ЛЕВАЯ ЧАСТЬ: Сообщения и поле ввода -->
                         <div class="chat-main">
                             <div class="messages" id="messages"></div>
 
-                            <!-- Индикатор "Кто-то печатает..." -->
                             <div class="typing-indicator" id="typing-indicator"></div>
 
                             <div class="chat-input-container">
 
-                                <!-- ПАНЕЛЬ ОТВЕТА НА СООБЩЕНИЕ -->
                                 <div class="reply-indicator" id="reply-indicator">
                                     <div class="reply-indicator-content">
                                         <div class="rep-name" id="reply-name">Name</div>
@@ -169,7 +141,6 @@
                                     <div class="reply-cancel" onclick="cancelReply()">×</div>
                                 </div>
 
-                                <!-- ПРЕДПРОСМОТР МЕДИА -->
                                 <div id="media-preview-container" style="display: none; background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; border: 1px solid #333; width: max-content;">
                                     <img id="media-preview-img" src="" style="max-height: 150px; border-radius: 4px;">
                                     <div style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: #ff4c4c; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="cancelMedia()">× Удалить</div>
@@ -181,7 +152,7 @@
                                     <div class="chat-input-wrapper">
                                         <div class="attach-btn" onclick="toggleEmojiPanel()">😀</div>
                                         <label class="attach-btn">
-                                            <!-- ИЗМЕНЕНО ТУТ: onchange="previewMedia()" -->
+
                                             <input type="file" id="media-input" accept="image/*" onchange="previewMedia()" style="display:none;">📎
                                         </label>
                                         <div id="chat-text" contenteditable="true" data-placeholder="Написать сообщение..."></div>
@@ -191,7 +162,6 @@
                             </div>
                         </div>
 
-                        <!-- ПРАВАЯ ЧАСТЬ: Список участников (скрывается при стриме) -->
                         <div class="members-sidebar" id="members-sidebar">
                             <div class="members-header">Участники</div>
                             <div class="members-list" id="members-list"></div>
@@ -204,16 +174,11 @@
     </div>
 
     <div id="voice-container" style="display: none;"></div>
-    <!-- =========================================
-         СКРИПТЫ
-    ========================================= -->
-    <!-- Клиент Socket.IO -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 
-    <!-- Модуль E2EE шифрования -->
     <script src="/static/js/crypto.js?v=4"></script>
 
-    <!-- Основная логика чата -->
     <script src="/static/js/main.js?v=4"></script>
 </body>
 </html>

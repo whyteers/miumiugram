@@ -26,7 +26,6 @@ export const StreamPlayer: React.FC<StreamPlayerProps> = ({ url, className, styl
             return;
         }
 
-        // Clean up previous instances on mount/URL change
         const cleanup = () => {
             if (flvPlayer) {
                 flvPlayer.pause();
@@ -78,7 +77,7 @@ export const StreamPlayer: React.FC<StreamPlayerProps> = ({ url, className, styl
                     });
                 }
             } else {
-                // Direct playback for mp4, webm, etc
+
                 video.src = url;
             }
         } catch (e) {

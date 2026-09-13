@@ -30,18 +30,16 @@ export default function AuthScreen() {
 
                 const endpoint = isRegister ? 'register' : 'login';
 
-                // If register, we always generate a new keypair
                 if (isRegister) {
                     setError('Генерация ключей шифрования...');
                     const keys = await CryptoE2E.generateKeyPair(password);
                     pubKey = keys.publicKey;
                     encPrivKey = keys.encryptedPrivateKey;
                 } else {
-                    // For login, we check if we have the key locally
+
                     const hasKey = await KeyDB.getKey();
                     if (!hasKey) {
-                        // We don't have the key locally. We will fetch it during login.
-                        // We don't generate a new key yet!
+
                     }
                 }
 
@@ -66,8 +64,7 @@ export default function AuthScreen() {
                         alert('Регистрация успешна!');
                         setIsRegister(false);
                     } else {
-                        // We logged in successfully.
-                        // Check if we need to restore the private key
+
                         if (data.encrypted_private_key) {
                             const hasKey = await KeyDB.getKey();
                             if (!hasKey) {
@@ -76,11 +73,9 @@ export default function AuthScreen() {
                                     await KeyDB.saveKey(Array.from(new Uint8Array(privKeyBuffer)));
                                 } catch (err) {
                                     console.error("Failed to decrypt private key", err);
-                                    // Fallback: generate new keys if decrypt fails?
-                                    // This means old messages will be unreadable, but we must have a key.
+
                                     const keys = await CryptoE2E.generateKeyPair(password);
 
-                                    // Send the newly generated keys to server
                                     await fetch(`/api/login`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +89,7 @@ export default function AuthScreen() {
                                 }
                             }
                         } else {
-                            // Backend doesn't have encrypted_private_key (legacy user)
+
                             const hasKey = await KeyDB.getKey();
                             if (!hasKey) {
                                 const keys = await CryptoE2E.generateKeyPair(password);
@@ -109,7 +104,7 @@ export default function AuthScreen() {
                                     })
                                 });
                             } else {
-                                // Upload existing key
+
                                 const privKeyBuffer = new Uint8Array(hasKey).buffer;
                                 const encPrivKey = await CryptoE2E.encryptPrivateKeyWithPassword(privKeyBuffer, password);
                                 await fetch(`/api/login`, {
@@ -132,7 +127,7 @@ export default function AuthScreen() {
                     setError(data.error || 'Ошибка авторизации');
                 }
             } else {
-                // Crypto not available
+
                 const endpoint = isRegister ? 'register' : 'login';
                 const res = await fetch(`/api/${endpoint}`, {
                     method: 'POST',
