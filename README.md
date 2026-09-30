@@ -1,4 +1,4 @@
-### **Firs start from full code** 
+### **First start from full code** 
 ### **Do not use for anything important, this is a pet project that cannot guarantee security, made with AI**
 1. Download and install OBS, Tailscale/NetBird, Node.js and the MediaMTX server.
 2. Log in to Tailscale.
